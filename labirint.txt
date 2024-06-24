@@ -1,0 +1,218 @@
+from random import randint
+from pygame import *
+back = (1800, 1100)
+BLUE = (0, 0, 255)
+run = True
+clock = time.Clock()
+from time import sleep
+loose_or_win = 'nothing'
+
+#1 Создать окно
+mw = display.set_mode(back)
+
+#2 Установить название и задний фон
+display.set_caption('Игра лабиринт')
+picture = transform.scale(image.load('fantasyforest_2.png'), back)
+mw.blit(picture, (0,0))
+
+#4 Создать класс GameSprit
+class GameSprite(sprite.Sprite):
+    def __init__(self, picture_game, w, h, x, y):
+        super().__init__()
+        self.image = transform.scale(image.load(picture_game), (w, h))
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+    def reset(self):
+        mw.blit(self.image, (self.rect.x, self.rect.y))
+
+#класс Пули
+class Bullet(GameSprite):
+    def __init__(self, picture_game, w, h, x, y):
+        super().__init__(picture_game, w, h, x, y)
+        self.bullet_speed = 20
+        self.rect.x = x
+
+    def bullet_update(self):
+        self.rect.x += self.bullet_speed
+        if self.rect.x > 2000:
+            self.kill()
+
+
+#класс соперника
+class Enemy(GameSprite):
+    def __init__(self, picture_game, w, h, x, y):
+        super().__init__(picture_game, w, h, x, y)
+        self.rect.x = x
+        self.rect.y = y
+        self.direction = 1
+
+    def enemy_update(self):
+        if self.rect.x >= 1650:
+            self.direction = -1
+        if self.rect.x <= 1160:
+            self.direction = 1
+        
+        self.rect.x += self.direction * 5
+
+    def disuppeare(self):
+        self.rect.x += 10000
+
+#создание соперника
+enemy_pers = Enemy('bull_bs.png', 170, 200, 1650, 365)
+#5 Создать стены (не менее 3)
+#5.1 горизонтальные
+wall2= GameSprite('platform_h.png',500, 110, 720, 550)
+wall3 = GameSprite('platform_h.png', 319, 70, 890, 290)
+wall4 = GameSprite('platform_h.png', 420, 50, 1400, 810)
+wall5 = GameSprite('platform_h.png', 220, 50, 0, 160)
+#5.2 вертикальная
+wall1 = GameSprite('platform_v.png', 120, 930, 1000,300)
+#группа для стенок 
+barries = sprite.Group()
+barries.add(wall1)
+barries.add(wall2)
+barries.add(wall3)
+barries.add(wall4)
+barries.add(wall5)
+#группа для пуль
+bullets = sprite.Group()
+
+
+#6 Создать класс Player
+class Player(GameSprite):
+    def __init__(self, picture_game, w, h, x, y, x_speed, y_speed):
+        super().__init__(picture_game, w, h, x, y)
+        self.x_speed = x_speed
+        self.y_speed = y_speed
+
+    def update(self):
+        #по иксу
+        self.rect.x += self.x_speed
+        platforms_touched = sprite.spritecollide(self, barries, False)
+        if self.x_speed > 0:
+            for p in platforms_touched:
+                self.rect.right = min(self.rect.right, p.rect.left)
+        elif self.x_speed < 0:
+            for p in platforms_touched:
+                self.rect.left = max(self.rect.left, p.rect.right)
+
+        #по игрику
+        self.rect.y += self.y_speed
+        platforms_touched = sprite.spritecollide(self, barries, False)
+        if self.y_speed > 0:
+            for p in  platforms_touched:
+                self.rect.bottom = min(self.rect.bottom, p.rect.top)
+        elif self.y_speed <0:
+            for p in platforms_touched:
+                self.rect.top = max(self.rect.top, p.rect.bottom)
+
+    #стрельба
+    def fire(self):
+        bullet = Bullet('spike_cactus.png', 35, 35, self.rect.right, self.rect.centery)
+        bullets.add(bullet)
+
+
+#7 Создать спрайт главного героя
+our_hero = Player('spike_bs.png', 150, 175, 50, 680, 0, 0)
+#финальный персонаж
+final_pers = GameSprite('enemy2.png', 150, 180, 1600, 890)
+#экран при победе
+win = transform.scale(image.load('thumb.jpg'), back)
+#экран при поражении
+loose = transform.scale(image.load('fail_1.jpg'), back)
+#доп награда
+game_bonus1 = Enemy('Asset 14@4x.png', 100, 100, 50, 50)
+game_bonus2 = Enemy('Asset 14@4x.png', 130, 130, 1600, 690)
+#3 Создать основной игровой цикл
+while run != False:
+    time.delay(10)
+    #отрисовка основных объектов
+    mw.blit(picture, (0,0))
+    game_bonus1.reset()
+    game_bonus2.reset()
+    our_hero.update()
+    our_hero.reset()
+    #3.1 выход из игры
+    for eventu in event.get():
+        if eventu.type == QUIT:
+            run = False
+    #8  Запрограммировать движение главного героя
+        #если нажать на кнопки
+        elif eventu.type == KEYDOWN:
+            if eventu.key == K_a:
+                our_hero.x_speed = -15
+            elif eventu.key == K_d:
+                our_hero.x_speed = 15
+            elif eventu.key == K_w:
+                our_hero.y_speed = -15
+            elif eventu.key == K_s:
+                our_hero.y_speed = 15
+
+            elif eventu.key == K_SPACE:
+                our_hero.fire()
+                for i in bullets:
+                    i.bullet_update()
+                    i.reset()
+        #если отпустить кнопки
+        elif eventu.type == KEYUP:
+            if eventu.key == K_a:
+                our_hero.x_speed = 0
+                
+            elif eventu.key == K_d:
+                our_hero.x_speed = 0
+                
+            elif eventu.key == K_w:
+                our_hero.y_speed = 0
+                
+            elif eventu.key == K_s:
+                our_hero.y_speed = 0
+    #отрисовка всех объектов
+    enemy_pers.enemy_update()
+    enemy_pers.reset()
+    barries.draw(mw)
+    final_pers.reset()
+    #пули
+    for i in bullets:
+        i.bullet_update()
+        i.reset()
+    #если игрок наступил на звезду
+    if sprite.collide_rect(our_hero, game_bonus1):
+        game_bonus1.disuppeare()
+    if sprite.collide_rect(our_hero, game_bonus2):
+        game_bonus2.disuppeare()
+    #если пули столкнутся со стенами - они пропадут
+    sprite.groupcollide(bullets, barries, True, False)
+    #если пули столкнутся с соперником - оба пропадут
+    if sprite.spritecollide(enemy_pers, bullets, True):
+        enemy_pers.disuppeare()
+    #если ты наступил на соперника
+    if sprite.collide_rect(our_hero, enemy_pers):
+        loose_or_win = 'loose'
+        break      
+    #если ты наступил на final_pers
+    if sprite.collide_rect(our_hero, final_pers):
+        loose_or_win = 'win'
+        break
+    #обновление экрана 
+    display.update()
+
+exit1 = True
+#если ты проиграл
+if loose_or_win == 'loose':
+    while exit1 != False:
+        for eventu in event.get():
+            if eventu.type == QUIT:
+                exit1= False
+
+        mw.blit(loose, (0,0))
+        display.update()
+#если ты выиграл
+elif loose_or_win == 'win':
+    while exit1 != False:
+        for eventu in event.get():
+            if eventu.type == QUIT:
+                exit1= False
+        mw.blit(win, (0,0))
+        display.update()
